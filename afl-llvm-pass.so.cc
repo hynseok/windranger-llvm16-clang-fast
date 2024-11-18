@@ -133,29 +133,29 @@ bool AFLCoverage::runOnModule(Module &M) {
       /* Load prev_loc */
 
       LoadInst *PrevLoc = IRB.CreateLoad(AFLPrevLoc->getType(), AFLPrevLoc);
-      PrevLoc->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, None));
+      PrevLoc->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, std::nullopt));
       Value *PrevLocCasted = IRB.CreateZExt(PrevLoc, IRB.getInt32Ty());
 
       /* Load SHM pointer */
 
       LoadInst *MapPtr = IRB.CreateLoad(AFLMapPtr->getType(), AFLMapPtr);
-      MapPtr->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, None));
+      MapPtr->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, std::nullopt));
       Value *MapPtrIdx =
           IRB.CreateGEP(MapPtr->getType(), MapPtr, IRB.CreateXor(PrevLocCasted, CurLoc));
 
       /* Update bitmap */
 
       LoadInst *Counter = IRB.CreateLoad(MapPtrIdx->getType(), MapPtrIdx);
-      Counter->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, None));
+      Counter->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, std::nullopt));
       Value *Incr = IRB.CreateAdd(Counter, ConstantInt::get(Int8Ty, 1));
       IRB.CreateStore(Incr, MapPtrIdx)
-          ->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, None));
+          ->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, std::nullopt));
 
       /* Set prev_loc to cur_loc >> 1 */
 
       StoreInst *Store =
           IRB.CreateStore(ConstantInt::get(Int32Ty, cur_loc >> 1), AFLPrevLoc);
-      Store->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, None));
+      Store->setMetadata(M.getMDKindID("nosanitize"), MDNode::get(C, std::nullopt));
 
       inst_blocks++;
 
