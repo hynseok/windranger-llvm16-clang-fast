@@ -45,34 +45,22 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Pass.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/PassPlugin.h"
+#include "llvm/IR/PassManager.h"
 
 using namespace llvm;
 
+Module* M2;
+
 namespace {
 
-  class AFLCoverage : public ModulePass {
+class AFLCoverage : public PassInfoMixin<AFLCoverage> {
+public:
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &);
+};
 
-    public:
-
-      static char ID;
-      AFLCoverage() : ModulePass(ID) { }
-
-      bool runOnModule(Module &M) override;
-
-      // StringRef getPassName() const override {
-      //  return "American Fuzzy Lop Instrumentation";
-      // }
-
-  };
-
-}
-
-Module* M2;
-char AFLCoverage::ID = 0;
-
-
-bool AFLCoverage::runOnModule(Module &M) {
-
+PreservedAnalyses AFLCoverage::run(Module &M, ModuleAnalysisManager &) {
   LLVMContext &C = M.getContext();
 
   M2 = &M;
@@ -173,21 +161,22 @@ bool AFLCoverage::runOnModule(Module &M) {
 
   }
 
-  return true;
+  return PreservedAnalyses::all();
+}
 
 }
 
-
-static void registerAFLPass(const PassManagerBuilder &,
-                            legacy::PassManagerBase &PM) {
-
-  PM.add(new AFLCoverage());
-
+extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo llvmGetPassPluginInfo() {
+  return {LLVM_PLUGIN_API_VERSION, "AFLCoverage", LLVM_VERSION_STRING,
+          [](PassBuilder &PB) {
+            PB.registerPipelineParsingCallback(
+                [](StringRef Name, ModulePassManager &MPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                  if (Name == "afl-coverage") {
+                    MPM.addPass(AFLCoverage());
+                    return true;
+                  }
+                  return false;
+                });
+          }};
 }
-
-
-static RegisterStandardPasses RegisterAFLPass(
-    PassManagerBuilder::EP_ModuleOptimizerEarly, registerAFLPass);
-
-static RegisterStandardPasses RegisterAFLPass0(
-    PassManagerBuilder::EP_EnabledOnOptLevel0, registerAFLPass);
